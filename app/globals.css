@@ -1,0 +1,250 @@
+@import "tailwindcss";
+
+/* ============================
+   DESIGN TOKENS — LIGHT MODE DEFAULT
+   ============================ */
+
+:root {
+  /* Fixed neutral scale (not theme-dependent) */
+  --black: #050505;
+  --white: #ffffff;
+  --gray-50: #fafafa;
+  --gray-100: #f5f5f5;
+  --gray-200: #e5e5e5;
+  --gray-300: #d4d4d4;
+  --gray-400: #a0a0a0;
+  --gray-500: #737373;
+  --gray-600: #525252;
+  --gray-700: #333333;
+  --gray-800: #1a1a1a;
+  --gray-900: #0d0d0d;
+  --gray-950: #080808;
+
+  /* Semantic tokens — light mode */
+  --background: #fafaf9;
+  --foreground: #0a0a0a;
+  --surface: #ffffff;
+  --surface-raised: #f5f5f4;
+  --text-primary: #0a0a0a;
+  --text-secondary: #525252;
+  --text-tertiary: #737373;
+  --text-muted: #a3a3a3;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-hover: rgba(0, 0, 0, 0.16);
+  --glow: rgba(0, 0, 0, 0.03);
+  --glow-strong: rgba(0, 0, 0, 0.06);
+  --grain-opacity: 0.02;
+  --grid-line: rgba(0, 0, 0, 0.04);
+
+  /* Terminal accent colors — light mode variants */
+  --terminal-green: #16a34a;
+  --terminal-cyan: #0891b2;
+  --terminal-yellow: #ca8a04;
+  --terminal-red: #dc2626;
+  --terminal-dim: #a3a3a3;
+}
+
+/* ============================
+   DARK MODE OVERRIDES
+   ============================ */
+
+.dark {
+  --background: #050505;
+  --foreground: #ffffff;
+  --surface: #0a0a0a;
+  --surface-raised: #080808;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --text-tertiary: #737373;
+  --text-muted: #525252;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.16);
+  --glow: rgba(255, 255, 255, 0.06);
+  --glow-strong: rgba(255, 255, 255, 0.12);
+  --grain-opacity: 0.035;
+  --grid-line: rgba(255, 255, 255, 0.015);
+
+  --terminal-green: #4ade80;
+  --terminal-cyan: #22d3ee;
+  --terminal-yellow: #facc15;
+  --terminal-red: #f87171;
+  --terminal-dim: #525252;
+}
+
+/* ============================
+   FORCE DARK (for terminals)
+   ============================ */
+
+.force-dark {
+  --background: #050505;
+  --foreground: #ffffff;
+  --surface: #0a0a0a;
+  --surface-raised: #080808;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --text-tertiary: #737373;
+  --text-muted: #525252;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.16);
+  --glow: rgba(255, 255, 255, 0.06);
+  --terminal-green: #4ade80;
+  --terminal-cyan: #22d3ee;
+  --terminal-yellow: #facc15;
+  --terminal-red: #f87171;
+  --terminal-dim: #525252;
+  color-scheme: dark;
+}
+
+/* ============================
+   TAILWIND THEME
+   ============================ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ============================
+   BASE STYLES
+   ============================ */
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--glow-strong);
+  color: var(--foreground);
+}
+
+/* ============================
+   GRAIN NOISE OVERLAY
+   ============================ */
+
+.grain-overlay::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+}
+
+/* ============================
+   CIRCUIT GRID (no-JS fallback)
+   ============================ */
+
+.circuit-grid {
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* ============================
+   KEYFRAMES
+   ============================ */
+
+@keyframes cursor-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes carousel {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes orbit-inner {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes orbit-middle {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes orbit-outer {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ============================
+   UTILITY CLASSES
+   ============================ */
+
+.animate-cursor-blink {
+  animation: cursor-blink 1s step-end infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+.animate-carousel {
+  animation: carousel 40s linear infinite;
+}
+
+.animate-carousel:hover {
+  animation-play-state: paused;
+}
+
+.animate-orbit-inner {
+  animation: orbit-inner 60s linear infinite;
+}
+
+.animate-orbit-middle {
+  animation: orbit-middle 90s linear infinite;
+}
+
+.animate-orbit-outer {
+  animation: orbit-outer 120s linear infinite;
+}
+
+.link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0% 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  transition: background-size 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+  padding-bottom: 2px;
+}
+
+.link-underline:hover {
+  background-size: 100% 1px;
+}
+
+/* ============================
+   REDUCED MOTION
+   ============================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
