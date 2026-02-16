@@ -9,6 +9,7 @@ import { DeveloperExperience } from "./components/developer-experience";
 import { LanguageOrbit } from "./components/language-orbit";
 import { HowItWorks } from "./components/how-it-works";
 import { BuiltForScale } from "./components/built-for-scale";
+import { PricingPreview } from "./components/pricing-preview";
 import { CtaBanner } from "./components/cta-banner";
 import { Footer } from "./components/footer";
 import { GlowLine } from "./components/shared/glow-line";
@@ -35,6 +36,8 @@ export default function Home() {
       <HowItWorks />
       <GlowLine />
       <BuiltForScale />
+      <GlowLine />
+      <PricingPreview />
       <GlowLine />
       <CtaBanner />
       <Footer />

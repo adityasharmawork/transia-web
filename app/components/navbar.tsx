@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion, useMotionValueEvent, useScroll } from "motion/react";
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { MagneticButton } from "./shared/magnetic-button";
 import { ThemeToggle } from "./shared/theme-toggle";
 
@@ -34,13 +35,19 @@ export function Navbar() {
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between">
         <a
-          href="#"
+          href="/"
           className="font-mono text-base font-medium tracking-[0.1em] text-[var(--foreground)]"
         >
           transia
         </a>
 
         <div className="flex items-center gap-4">
+          <a
+            href="/pricing"
+            className="link-underline hidden font-mono text-sm text-[var(--text-secondary)] transition-colors hover:text-[var(--foreground)] sm:inline"
+          >
+            Pricing
+          </a>
           <a
             href="https://github.com"
             target="_blank"
@@ -50,12 +57,23 @@ export function Navbar() {
             GitHub
           </a>
           <ThemeToggle />
-          <MagneticButton
-            href="#get-started"
-            className="rounded-full border border-[var(--border-hover)] px-5 py-2 font-mono text-xs tracking-wider text-[var(--foreground)] transition-colors hover:bg-[var(--glow)]"
-          >
-            Go Global
-          </MagneticButton>
+          <SignedOut>
+            <MagneticButton
+              href="/sign-in"
+              className="rounded-full border border-[var(--border-hover)] px-5 py-2 font-mono text-xs tracking-wider text-[var(--foreground)] transition-colors hover:bg-[var(--glow)]"
+            >
+              Sign In
+            </MagneticButton>
+          </SignedOut>
+          <SignedIn>
+            <MagneticButton
+              href="/dashboard"
+              className="rounded-full border border-[var(--border-hover)] px-5 py-2 font-mono text-xs tracking-wider text-[var(--foreground)] transition-colors hover:bg-[var(--glow)]"
+            >
+              Dashboard
+            </MagneticButton>
+            <UserButton afterSignOutUrl="/" />
+          </SignedIn>
         </div>
       </div>
     </motion.nav>

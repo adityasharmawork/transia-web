@@ -63,7 +63,7 @@ export function CtaBanner() {
           className="mt-10 flex flex-col items-center gap-4 sm:flex-row"
         >
           <MagneticButton
-            href="#get-started"
+            href="/pricing"
             className="rounded-full bg-[var(--foreground)] px-8 py-3 text-sm font-medium text-[var(--background)] transition-colors hover:opacity-90"
           >
             Go Global Now
