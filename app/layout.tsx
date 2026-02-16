@@ -4,6 +4,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { CircuitPulseBackground } from "./components/shared/circuit-pulse-background";
 import "./globals.css";
 
+const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
+const hasClerkKey = clerkKey.startsWith("pk_") && clerkKey.length > 20;
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -42,23 +45,24 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
-        <head>
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}}catch(e){document.documentElement.classList.add('dark')}})()`,
-            }}
-          />
-        </head>
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased grain-overlay`}
-        >
-          <CircuitPulseBackground />
-          {children}
-        </body>
-      </html>
-    </ClerkProvider>
+  const content = (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}else{document.documentElement.classList.remove('dark')}}catch(e){document.documentElement.classList.add('dark')}})()`,
+          }}
+        />
+      </head>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased grain-overlay`}
+      >
+        <CircuitPulseBackground />
+        {children}
+      </body>
+    </html>
   );
+
+  if (!hasClerkKey) return content;
+  return <ClerkProvider>{content}</ClerkProvider>;
 }

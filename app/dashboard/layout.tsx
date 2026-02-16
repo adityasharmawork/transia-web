@@ -2,6 +2,8 @@ import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import { ThemeToggle } from "../components/shared/theme-toggle";
 
+export const dynamic = "force-dynamic";
+
 export default function DashboardLayout({
   children,
 }: {

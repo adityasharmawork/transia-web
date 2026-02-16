@@ -6,6 +6,9 @@ import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { MagneticButton } from "./shared/magnetic-button";
 import { ThemeToggle } from "./shared/theme-toggle";
 
+const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
+const hasClerk = clerkKey.startsWith("pk_") && clerkKey.length > 20;
+
 export function Navbar() {
   const { scrollY } = useScroll();
   const [hidden, setHidden] = useState(false);
@@ -57,23 +60,34 @@ export function Navbar() {
             GitHub
           </a>
           <ThemeToggle />
-          <SignedOut>
+          {hasClerk ? (
+            <>
+              <SignedOut>
+                <MagneticButton
+                  href="/sign-in"
+                  className="rounded-full border border-[var(--border-hover)] px-5 py-2 font-mono text-xs tracking-wider text-[var(--foreground)] transition-colors hover:bg-[var(--glow)]"
+                >
+                  Sign In
+                </MagneticButton>
+              </SignedOut>
+              <SignedIn>
+                <MagneticButton
+                  href="/dashboard"
+                  className="rounded-full border border-[var(--border-hover)] px-5 py-2 font-mono text-xs tracking-wider text-[var(--foreground)] transition-colors hover:bg-[var(--glow)]"
+                >
+                  Dashboard
+                </MagneticButton>
+                <UserButton afterSignOutUrl="/" />
+              </SignedIn>
+            </>
+          ) : (
             <MagneticButton
               href="/sign-in"
               className="rounded-full border border-[var(--border-hover)] px-5 py-2 font-mono text-xs tracking-wider text-[var(--foreground)] transition-colors hover:bg-[var(--glow)]"
             >
               Sign In
             </MagneticButton>
-          </SignedOut>
-          <SignedIn>
-            <MagneticButton
-              href="/dashboard"
-              className="rounded-full border border-[var(--border-hover)] px-5 py-2 font-mono text-xs tracking-wider text-[var(--foreground)] transition-colors hover:bg-[var(--glow)]"
-            >
-              Dashboard
-            </MagneticButton>
-            <UserButton afterSignOutUrl="/" />
-          </SignedIn>
+          )}
         </div>
       </div>
     </motion.nav>
