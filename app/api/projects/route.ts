@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { connectDB, Project } from "@/lib/db";
+import { connectDB, Project, generateApiKey } from "@/lib/db";
 
 const FREE_PROJECT_LIMIT = 3;
 const PRO_PROJECT_LIMIT = 10;
@@ -83,15 +83,28 @@ export async function POST(req: Request) {
       );
     }
 
+    const { fullKey, hash, prefix } = generateApiKey();
+
     const project = await Project.create({
       userId: user._id,
       name: name.trim(),
+      apiKeyHash: hash,
+      apiKeyPrefix: prefix,
       sourceLocale: sourceLocale || "en",
       targetLocales: targetLocales || [],
       outputFormat: outputFormat || "next-intl",
     });
 
-    return NextResponse.json({ project }, { status: 201 });
+    // Return the full API key only at creation time — it is never stored
+    return NextResponse.json(
+      {
+        project: {
+          ...project.toObject(),
+          apiKey: fullKey,
+        },
+      },
+      { status: 201 }
+    );
   } catch (error) {
     if (
       error instanceof Error &&

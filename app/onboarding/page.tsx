@@ -57,16 +57,9 @@ export default function OnboardingPage() {
 
   async function handleContinue() {
     setLoading(true);
-    try {
-      await fetch("/api/account/tier", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier: selected }),
-      });
-      router.push("/dashboard");
-    } catch {
-      router.push("/dashboard");
-    }
+    // All new users start on the free tier (set in the User model default).
+    // Paid tier upgrades will be handled via Stripe Checkout from the billing page.
+    router.push("/dashboard");
   }
 
   return (

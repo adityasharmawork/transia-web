@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
-import { connectDB, CliSession, CliToken, hashToken, User } from "@/lib/db";
+import { connectDB, CliSession, CliToken, hashToken, enforceTokenLimit, User } from "@/lib/db";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -27,6 +27,9 @@ export async function GET(req: Request) {
   if (session.status === "confirmed" && session.userId) {
     const user = await User.findById(session.userId);
 
+    // Enforce max 10 tokens per user — delete oldest if at limit
+    await enforceTokenLimit(user!._id);
+
     // Generate auth token at pickup time — never stored in session
     const authToken = `trn_cli_${crypto.randomBytes(32).toString("hex")}`;
 
@@ -34,6 +37,7 @@ export async function GET(req: Request) {
     await CliToken.create({
       userId: user!._id,
       tokenHash: hashToken(authToken),
+      label: "CLI",
     });
 
     // Delete session immediately — token can only be retrieved once

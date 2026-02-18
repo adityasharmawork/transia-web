@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 const plans = [
   {
@@ -55,6 +56,7 @@ const plans = [
 type Tier = "free" | "pro" | "team";
 
 export default function BillingPage() {
+  const searchParams = useSearchParams();
   const [currentTier, setCurrentTier] = useState<Tier | null>(null);
   const [loading, setLoading] = useState(true);
   const [changing, setChanging] = useState<Tier | null>(null);
@@ -62,6 +64,14 @@ export default function BillingPage() {
     text: string;
     type: "success" | "error";
   } | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("success") === "true") {
+      setMessage({ text: "Subscription activated! Your plan has been upgraded.", type: "success" });
+    } else if (searchParams.get("canceled") === "true") {
+      setMessage({ text: "Checkout canceled. No changes were made.", type: "error" });
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetch("/api/account/tier")
@@ -75,36 +85,52 @@ export default function BillingPage() {
 
   async function handleChangeTier(tier: Tier) {
     if (tier === currentTier) return;
+
+    if (tier === "free") {
+      // Downgrade: redirect to Stripe Customer Portal
+      await openPortal();
+      return;
+    }
+
+    // Upgrade: redirect to Stripe Checkout
     setChanging(tier);
     setMessage(null);
 
     try {
-      const res = await fetch("/api/account/tier", {
+      const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tier }),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        setMessage({ text: data.error || "Failed to change plan", type: "error" });
-        return;
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setMessage({ text: data.error || "Failed to start checkout", type: "error" });
       }
-
-      setCurrentTier(tier);
-      const action =
-        plans.findIndex((p) => p.id === tier) >
-        plans.findIndex((p) => p.id === currentTier)
-          ? "upgraded"
-          : "changed";
-      setMessage({
-        text: `Successfully ${action} to ${plans.find((p) => p.id === tier)?.name}.`,
-        type: "success",
-      });
     } catch {
       setMessage({ text: "Something went wrong. Please try again.", type: "error" });
     } finally {
       setChanging(null);
+    }
+  }
+
+  async function openPortal() {
+    setMessage(null);
+    try {
+      const res = await fetch("/api/stripe/portal", { method: "POST" });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        setMessage({
+          text: "To downgrade to Free, please contact support.",
+          type: "error",
+        });
+      }
+    } catch {
+      setMessage({ text: "Something went wrong. Please try again.", type: "error" });
     }
   }
 
@@ -214,7 +240,7 @@ export default function BillingPage() {
                 {isCurrent
                   ? "Current Plan"
                   : isChanging
-                    ? "Changing..."
+                    ? "Redirecting..."
                     : plans.findIndex((p) => p.id === plan.id) >
                         plans.findIndex((p) => p.id === currentTier)
                       ? `Upgrade to ${plan.name}`
@@ -225,15 +251,22 @@ export default function BillingPage() {
         })}
       </div>
 
-      <div className="mt-8 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5">
-        <h3 className="text-sm font-medium text-[var(--foreground)]">
-          Payment
-        </h3>
-        <p className="mt-2 text-sm text-[var(--text-secondary)]">
-          Stripe payment integration coming soon. During the beta, plan changes
-          take effect immediately at no charge.
-        </p>
-      </div>
+      {currentTier !== "free" && (
+        <div className="mt-8 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5">
+          <h3 className="text-sm font-medium text-[var(--foreground)]">
+            Manage Subscription
+          </h3>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            Update payment method, view invoices, or cancel your subscription.
+          </p>
+          <button
+            onClick={openPortal}
+            className="mt-3 rounded-lg border border-[var(--border)] px-4 py-2 font-mono text-sm text-[var(--text-secondary)] transition-colors hover:border-[var(--border-hover)] hover:text-[var(--foreground)]"
+          >
+            Open Billing Portal
+          </button>
+        </div>
+      )}
     </div>
   );
 }

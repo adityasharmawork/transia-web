@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { connectDB, AnalyticsEvent, Project } from "@/lib/db";
+import { analyticsEventLimiter, getClientIp, checkRateLimit } from "@/lib/rate-limit";
 
 const ALLOWED_EVENT_TYPES = new Set([
   "widget.loaded",
@@ -10,8 +11,7 @@ const ALLOWED_EVENT_TYPES = new Set([
 const LOCALE_RE = /^[a-z]{2}(-[A-Z]{2})?$/;
 const MAX_BATCH_SIZE = 50;
 const MAX_PAGE_URL_LENGTH = 2048;
-const MONGO_ID_RE = /^[a-f0-9]{24}$/;
-const API_KEY_RE = /^trn_live_[a-f0-9]{48}$/;
+const PUBLIC_KEY_RE = /^trn_pub_[a-f0-9]{32}$/;
 
 function corsHeaders() {
   return {
@@ -36,6 +36,17 @@ interface WidgetEvent {
 
 export async function POST(req: Request) {
   try {
+    // Rate limit by client IP
+    const rateLimited = await checkRateLimit(analyticsEventLimiter, getClientIp(req));
+    if (rateLimited) {
+      // Add CORS headers to rate limit response
+      const headers = corsHeaders();
+      return new NextResponse(rateLimited.body, {
+        status: 429,
+        headers: { ...headers, "Retry-After": rateLimited.headers.get("Retry-After") || "60" },
+      });
+    }
+
     const { events } = (await req.json()) as { events: WidgetEvent[] };
 
     if (!Array.isArray(events) || events.length === 0) {
@@ -51,8 +62,8 @@ export async function POST(req: Request) {
     // H1: Validate event structure
     const validEvents = batch.filter((e) => {
       if (!e.projectId || typeof e.projectId !== "string") return false;
-      // Validate projectId format (must be an API key format)
-      if (!API_KEY_RE.test(e.projectId)) return false;
+      // Validate projectId format (must be a public key)
+      if (!PUBLIC_KEY_RE.test(e.projectId)) return false;
       // Validate eventType is one of the known types
       if (!ALLOWED_EVENT_TYPES.has(e.eventType)) return false;
       // M1: Validate locale format (allow empty)
@@ -75,15 +86,13 @@ export async function POST(req: Request) {
 
     await connectDB();
 
-    // Look up project API keys to get project ObjectIds
-    const projectIds = [...new Set(validEvents.map((e) => e.projectId))];
+    // Look up projects by public key
+    const uniqueKeys = [...new Set(validEvents.map((e) => e.projectId))];
     const projects = await Project.find({
-      apiKey: { $in: projectIds },
+      publicKey: { $in: uniqueKeys },
     }).lean();
 
-    const projectMap = new Map(
-      projects.map((p) => [p.apiKey, p._id])
-    );
+    const projectMap = new Map(projects.map((p) => [p.publicKey, p._id]));
 
     const docs = validEvents
       .filter((e) => projectMap.has(e.projectId))

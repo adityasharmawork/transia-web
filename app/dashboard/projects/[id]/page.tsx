@@ -6,7 +6,8 @@ import { CopyIconButton } from "@/app/components/shared/copy-icon-button";
 interface Project {
   _id: string;
   name: string;
-  apiKey: string;
+  apiKeyPrefix: string;
+  publicKey: string;
   sourceLocale: string;
   targetLocales: string[];
   outputFormat: string;
@@ -39,8 +40,8 @@ export default function ProjectPage({
   const { id } = use(params);
   const [data, setData] = useState<ProjectData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showKey, setShowKey] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [newKey, setNewKey] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProject();
@@ -58,7 +59,7 @@ export default function ProjectPage({
   }
 
   async function regenerateKey() {
-    if (!confirm("Regenerate API key? The old key will stop working immediately.")) {
+    if (!confirm("Regenerate API key? The old key will stop working immediately. Make sure to copy the new key — it will only be shown once.")) {
       return;
     }
     setRegenerating(true);
@@ -67,6 +68,8 @@ export default function ProjectPage({
         method: "POST",
       });
       if (res.ok) {
+        const data = await res.json();
+        setNewKey(data.apiKey);
         fetchProject();
       }
     } finally {
@@ -95,7 +98,6 @@ export default function ProjectPage({
   }
 
   const { project, usage } = data;
-  const maskedKey = project.apiKey.slice(0, 12) + "..." + project.apiKey.slice(-4);
 
   return (
     <div className="space-y-8">
@@ -113,17 +115,25 @@ export default function ProjectPage({
         <h2 className="mb-4 text-lg font-medium text-[var(--foreground)]">
           API Key
         </h2>
+
+        {newKey && (
+          <div className="mb-4 rounded-lg border border-[var(--terminal-green)]/30 bg-[var(--terminal-green)]/5 p-4">
+            <p className="mb-2 font-mono text-xs text-[var(--terminal-green)]">
+              New API key generated. Copy it now — it will only be shown once.
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-2 font-mono text-sm text-[var(--foreground)]">
+                {newKey}
+              </code>
+              <CopyIconButton text={newKey} />
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-3">
-          <code className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-2 font-mono text-sm text-[var(--foreground)]">
-            {showKey ? project.apiKey : maskedKey}
+          <code className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-2 font-mono text-sm text-[var(--text-muted)]">
+            {project.apiKeyPrefix}
           </code>
-          <button
-            onClick={() => setShowKey(!showKey)}
-            className="rounded-lg border border-[var(--border)] px-3 py-2 font-mono text-xs text-[var(--text-secondary)] transition-colors hover:text-[var(--foreground)]"
-          >
-            {showKey ? "Hide" : "Show"}
-          </button>
-          <CopyIconButton text={project.apiKey} />
           <button
             onClick={regenerateKey}
             disabled={regenerating}
@@ -132,6 +142,25 @@ export default function ProjectPage({
             {regenerating ? "..." : "Regenerate"}
           </button>
         </div>
+        <p className="mt-2 font-mono text-xs text-[var(--text-muted)]">
+          For security, the full key is only shown at creation. If you lost it, regenerate a new one.
+        </p>
+      </section>
+
+      {/* Widget Key (Public) */}
+      <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
+        <h2 className="mb-4 text-lg font-medium text-[var(--foreground)]">
+          Widget Key
+        </h2>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-2 font-mono text-sm text-[var(--foreground)]">
+            {project.publicKey}
+          </code>
+          <CopyIconButton text={project.publicKey} />
+        </div>
+        <p className="mt-2 font-mono text-xs text-[var(--text-muted)]">
+          Use this key in your widget. It is safe to expose in client-side code — it can only send analytics, not trigger translations.
+        </p>
       </section>
 
       {/* Quick Start */}
@@ -187,6 +216,17 @@ export default function ProjectPage({
               <CopyIconButton
                 text={`transia translate --target ${project.targetLocales.length > 0 ? project.targetLocales.join(",") : "es,fr,de"}`}
               />
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 font-mono text-xs text-[var(--text-muted)]">
+              5. Add the language widget (optional)
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded-lg bg-[var(--background)] px-4 py-2 font-mono text-sm text-[var(--terminal-green)]">
+                {`<TransiaWidget projectId="${project.publicKey}" ... />`}
+              </code>
+              <CopyIconButton text={project.publicKey} />
             </div>
           </div>
         </div>

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { connectDB, Project, User, UsageLog, CliToken, hashToken } from "@/lib/db";
+import { connectDB, Project, User, UsageLog, CliToken, hashToken, TranslationCache, cacheHash, hashApiKey } from "@/lib/db";
+import { translateLimiter, checkRateLimit } from "@/lib/rate-limit";
+import { getAvailableKey, markRateLimited, hasKeys } from "@/lib/ai/key-pool";
 
 const TIER_LIMITS: Record<string, number> = {
   free: 0,
@@ -89,6 +91,14 @@ export async function POST(req: Request) {
 
     const { apiKey, strings, sourceLocale, targetLocale } = body;
 
+    // Reject public keys — only private keys (trn_live_*) are valid for translation
+    if (apiKey.startsWith("trn_pub_")) {
+      return NextResponse.json(
+        { error: "Public keys (trn_pub_*) cannot be used for translations. Use your private API key (trn_live_*)." },
+        { status: 403 }
+      );
+    }
+
     // Sanitize context fields
     for (const s of strings) {
       if (s.context) {
@@ -98,17 +108,24 @@ export async function POST(req: Request) {
 
     await connectDB();
 
-    // Verify Bearer token
-    const tokenDoc = await CliToken.findOne({ tokenHash: hashToken(bearerToken) });
+    // Verify Bearer token (must exist and not be expired)
+    const tokenDoc = await CliToken.findOne({
+      tokenHash: hashToken(bearerToken),
+      expiresAt: { $gt: new Date() },
+    });
     if (!tokenDoc) {
       return NextResponse.json(
-        { error: "Invalid authentication token" },
+        { error: "Invalid or expired authentication token. Run 'transia login' to re-authenticate." },
         { status: 401 }
       );
     }
 
-    // Find project by API key
-    const project = await Project.findOne({ apiKey });
+    // Rate limit by authenticated user
+    const rateLimited = await checkRateLimit(translateLimiter, tokenDoc.userId.toString());
+    if (rateLimited) return rateLimited;
+
+    // Find project by API key hash
+    const project = await Project.findOne({ apiKeyHash: hashApiKey(apiKey) });
     if (!project) {
       return NextResponse.json(
         { error: "Invalid API key" },
@@ -169,45 +186,109 @@ export async function POST(req: Request) {
       );
     }
 
-    // Call AI provider (Gemini free tier by default)
-    const geminiKey = process.env.GEMINI_API_KEY;
-    const grokKey = process.env.GROK_API_KEY;
+    // Check translation cache for each string
+    const translations: Record<string, string> = {};
+    const uncachedStrings: TranslationString[] = [];
 
-    let translations: Record<string, string>;
+    const cacheHashes = strings.map((s) => cacheHash(s.original, sourceLocale, targetLocale));
+    const cachedDocs = await TranslationCache.find({ hash: { $in: cacheHashes } }).lean();
+    const cacheMap = new Map(cachedDocs.map((doc) => [doc.hash, doc.translated]));
 
-    if (geminiKey) {
-      translations = await translateWithGemini(
-        geminiKey,
-        strings,
-        sourceLocale,
-        targetLocale
-      );
-    } else if (grokKey) {
-      translations = await translateWithGrok(
-        grokKey,
-        strings,
-        sourceLocale,
-        targetLocale
-      );
-    } else {
-      return NextResponse.json(
-        { error: "No translation provider configured" },
-        { status: 503 }
-      );
+    for (let i = 0; i < strings.length; i++) {
+      const cached = cacheMap.get(cacheHashes[i]);
+      if (cached) {
+        translations[strings[i].key] = cached;
+      } else {
+        uncachedStrings.push(strings[i]);
+      }
     }
 
-    // Log usage
-    await UsageLog.create({
-      projectId: project._id,
-      stringsTranslated: strings.length,
-      tokensUsed: 0,
-      provider: geminiKey ? "gemini" : "grok",
-      locale: targetLocale,
-    });
+    // Increment hit count for cached entries (best-effort, non-blocking)
+    if (cachedDocs.length > 0) {
+      const hitHashes = cachedDocs.map((d) => d.hash);
+      TranslationCache.updateMany(
+        { hash: { $in: hitHashes } },
+        { $inc: { hitCount: 1 } },
+      ).catch(() => {});
+    }
+
+    // Translate uncached strings via AI provider (with key pool + fallback chain)
+    if (uncachedStrings.length > 0) {
+      const providerChain: Array<{
+        name: "gemini" | "grok";
+        translate: (key: string, strs: TranslationString[], src: string, tgt: string) => Promise<Record<string, string>>;
+      }> = [
+        { name: "gemini", translate: translateWithGemini },
+        { name: "grok", translate: translateWithGrok },
+      ];
+
+      let aiTranslations: Record<string, string> | null = null;
+      let providerName = "";
+
+      for (const provider of providerChain) {
+        if (!hasKeys(provider.name)) continue;
+
+        const key = getAvailableKey(provider.name);
+        if (!key) continue; // all keys for this provider are rate-limited
+
+        try {
+          aiTranslations = await provider.translate(key, uncachedStrings, sourceLocale, targetLocale);
+          providerName = provider.name;
+          break; // success — stop trying
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "";
+          if (message.includes("429") || message.includes("rate")) {
+            // Parse Retry-After if available, default to 60s
+            markRateLimited(provider.name, key, 60_000);
+            continue; // try next provider
+          }
+          throw error; // non-rate-limit error — bubble up
+        }
+      }
+
+      if (!aiTranslations) {
+        return NextResponse.json(
+          { error: "All translation providers are currently rate-limited. Please try again shortly." },
+          { status: 503, headers: { "Retry-After": "60" } }
+        );
+      }
+
+      // Merge AI translations into result and store in cache
+      const cacheEntries = [];
+
+      for (const s of uncachedStrings) {
+        const translated = aiTranslations[s.key];
+        if (translated) {
+          translations[s.key] = translated;
+          cacheEntries.push({
+            hash: cacheHash(s.original, sourceLocale, targetLocale),
+            original: s.original,
+            sourceLocale,
+            targetLocale,
+            translated,
+            provider: providerName,
+          });
+        }
+      }
+
+      // Store in cache (best-effort, non-blocking, ignore duplicates)
+      if (cacheEntries.length > 0) {
+        TranslationCache.insertMany(cacheEntries, { ordered: false }).catch(() => {});
+      }
+
+      // Log usage (only count strings actually sent to AI)
+      await UsageLog.create({
+        projectId: project._id,
+        stringsTranslated: uncachedStrings.length,
+        tokensUsed: 0,
+        provider: providerName,
+        locale: targetLocale,
+      });
+    }
 
     return NextResponse.json({ translations });
   } catch (error) {
-    console.error("Translation proxy error:", error);
+    console.error("Translation proxy error:", error instanceof Error ? error.message : "Unknown error");
     return NextResponse.json(
       { error: "Translation failed" },
       { status: 500 }

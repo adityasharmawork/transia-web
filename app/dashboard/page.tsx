@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { CopyIconButton } from "@/app/components/shared/copy-icon-button";
 
 interface Project {
   _id: string;
   name: string;
-  apiKey: string;
+  apiKeyPrefix: string;
   sourceLocale: string;
   targetLocales: string[];
   outputFormat: string;
@@ -20,6 +21,7 @@ export default function DashboardPage() {
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+  const [newProjectKey, setNewProjectKey] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProjects();
@@ -53,6 +55,8 @@ export default function DashboardPage() {
         return;
       }
 
+      const data = await res.json();
+      setNewProjectKey(data.project?.apiKey || null);
       setNewName("");
       setShowCreate(false);
       fetchProjects();
@@ -89,6 +93,26 @@ export default function DashboardPage() {
           New Project
         </button>
       </div>
+
+      {newProjectKey && (
+        <div className="mb-6 rounded-lg border border-[var(--terminal-green)]/30 bg-[var(--terminal-green)]/5 p-4">
+          <p className="mb-2 font-mono text-xs text-[var(--terminal-green)]">
+            Project created! Copy your API key now — it will only be shown once.
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-4 py-2 font-mono text-sm text-[var(--foreground)]">
+              {newProjectKey}
+            </code>
+            <CopyIconButton text={newProjectKey} />
+            <button
+              onClick={() => setNewProjectKey(null)}
+              className="rounded-lg border border-[var(--border)] px-3 py-2 font-mono text-xs text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {showCreate && (
         <form

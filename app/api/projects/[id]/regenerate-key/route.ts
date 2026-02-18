@@ -1,7 +1,6 @@
-import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-import { connectDB, Project } from "@/lib/db";
+import { connectDB, Project, generateApiKey } from "@/lib/db";
 
 export async function POST(
   _req: Request,
@@ -12,11 +11,11 @@ export async function POST(
     await connectDB();
 
     const { id } = await params;
-    const newApiKey = `trn_live_${crypto.randomBytes(24).toString("hex")}`;
+    const { fullKey, hash, prefix } = generateApiKey();
 
     const project = await Project.findOneAndUpdate(
       { _id: id, userId: user._id },
-      { apiKey: newApiKey },
+      { apiKeyHash: hash, apiKeyPrefix: prefix },
       { new: true }
     );
 
@@ -27,7 +26,8 @@ export async function POST(
       );
     }
 
-    return NextResponse.json({ apiKey: project.apiKey });
+    // Return the full API key only at regeneration time
+    return NextResponse.json({ apiKey: fullKey });
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

@@ -11,9 +11,12 @@ export async function POST(req: Request) {
 
   await connectDB();
 
-  const tokenDoc = await CliToken.findOne({ tokenHash: hashToken(token) });
+  const tokenDoc = await CliToken.findOne({
+    tokenHash: hashToken(token),
+    expiresAt: { $gt: new Date() },
+  });
   if (!tokenDoc) {
-    return NextResponse.json({ valid: false }, { status: 401 });
+    return NextResponse.json({ valid: false, error: "Token invalid or expired" }, { status: 401 });
   }
 
   const user = await User.findById(tokenDoc.userId);
