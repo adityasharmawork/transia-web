@@ -31,6 +31,21 @@ export async function GET(
     }
 
     const retentionDays = TIER_RETENTION_DAYS[user.tier] ?? 7;
+
+    if (project.analyticsEnabled === false) {
+      return NextResponse.json({
+        totalLoads: 0,
+        totalSwitches: 0,
+        switchRate: 0,
+        topLanguage: null,
+        languageDistribution: [],
+        dailyTrend: [],
+        topPages: [],
+        countryBreakdown: [],
+        retentionDays,
+        analyticsEnabled: false,
+      });
+    }
     // 0 = lifetime retention (Team tier)
     const since =
       retentionDays > 0
@@ -148,6 +163,7 @@ export async function GET(
         count: d.count,
       })),
       retentionDays,
+      analyticsEnabled: true,
     });
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

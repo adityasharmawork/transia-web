@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 
 const plans = [
@@ -60,10 +60,26 @@ export default function BillingPage() {
   const [currentTier, setCurrentTier] = useState<Tier | null>(null);
   const [loading, setLoading] = useState(true);
   const [changing, setChanging] = useState<Tier | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [usePoints, setUsePoints] = useState(false);
+  const [ownReferralCode, setOwnReferralCode] = useState("");
+  const [referralPoints, setReferralPoints] = useState(0);
+  const [canClaimReferral, setCanClaimReferral] = useState(false);
+  const [claimCode, setClaimCode] = useState("");
+  const [claimingReferral, setClaimingReferral] = useState(false);
   const [message, setMessage] = useState<{
     text: string;
     type: "success" | "error";
   } | null>(null);
+
+  const loadAccount = useCallback(async () => {
+    const res = await fetch("/api/account/tier");
+    const data = await res.json();
+    setCurrentTier(data.tier);
+    setOwnReferralCode(data.referralCode || "");
+    setReferralPoints(data.referralPoints || 0);
+    setCanClaimReferral(Boolean(data.canClaimReferral));
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
@@ -74,14 +90,10 @@ export default function BillingPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    fetch("/api/account/tier")
-      .then((r) => r.json())
-      .then((data) => {
-        setCurrentTier(data.tier);
-        setLoading(false);
-      })
+    loadAccount()
+      .then(() => setLoading(false))
       .catch(() => setLoading(false));
-  }, []);
+  }, [loadAccount]);
 
   async function handleChangeTier(tier: Tier) {
     if (tier === currentTier) return;
@@ -97,10 +109,31 @@ export default function BillingPage() {
     setMessage(null);
 
     try {
+      const checkoutPayload = {
+        tier,
+        couponCode: couponCode.trim() || undefined,
+        redeemPoints: usePoints,
+      };
+
+      const quoteRes = await fetch("/api/billing/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(checkoutPayload),
+      });
+
+      if (!quoteRes.ok) {
+        const quoteError = await quoteRes.json();
+        setMessage({
+          text: quoteError.error || "Discount validation failed",
+          type: "error",
+        });
+        return;
+      }
+
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier }),
+        body: JSON.stringify(checkoutPayload),
       });
 
       const data = await res.json();
@@ -131,6 +164,36 @@ export default function BillingPage() {
       }
     } catch {
       setMessage({ text: "Something went wrong. Please try again.", type: "error" });
+    }
+  }
+
+  async function claimReferralCode() {
+    if (!claimCode.trim()) {
+      setMessage({ text: "Enter a referral code first.", type: "error" });
+      return;
+    }
+
+    setClaimingReferral(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/referrals/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: claimCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage({ text: data.error || "Failed to claim referral code", type: "error" });
+        return;
+      }
+
+      setMessage({ text: "Referral code claimed successfully.", type: "success" });
+      setClaimCode("");
+      await loadAccount();
+    } catch {
+      setMessage({ text: "Something went wrong. Please try again.", type: "error" });
+    } finally {
+      setClaimingReferral(false);
     }
   }
 
@@ -170,6 +233,68 @@ export default function BillingPage() {
           {message.text}
         </div>
       )}
+
+      <div className="mb-6 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5">
+        <h3 className="text-sm font-medium text-[var(--foreground)]">
+          Discounts
+        </h3>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+          Enter a coupon code and choose whether to spend referral points.
+          The single best eligible discount is applied automatically.
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+          <input
+            type="text"
+            value={couponCode}
+            onChange={(e) => setCouponCode(e.target.value)}
+            placeholder="Coupon code"
+            className="rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-sm text-[var(--foreground)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-hover)] focus:outline-none"
+          />
+          <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 font-mono text-sm text-[var(--text-secondary)]">
+            <input
+              type="checkbox"
+              checked={usePoints}
+              onChange={(e) => setUsePoints(e.target.checked)}
+              className="h-4 w-4 accent-[var(--foreground)]"
+            />
+            Spend points ({referralPoints}% available)
+          </label>
+        </div>
+      </div>
+
+      <div className="mb-6 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-5">
+        <h3 className="text-sm font-medium text-[var(--foreground)]">
+          Referral Program
+        </h3>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+          Share your code: <span className="font-mono text-[var(--foreground)]">{ownReferralCode || "—"}</span>
+        </p>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          Referral points:{" "}
+          <span className="font-semibold text-[var(--foreground)]">
+            {referralPoints}
+          </span>
+        </p>
+
+        {canClaimReferral && (
+          <div className="mt-4 flex gap-3">
+            <input
+              type="text"
+              value={claimCode}
+              onChange={(e) => setClaimCode(e.target.value)}
+              placeholder="Enter referral code"
+              className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-sm text-[var(--foreground)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-hover)] focus:outline-none"
+            />
+            <button
+              onClick={claimReferralCode}
+              disabled={claimingReferral}
+              className="rounded-lg bg-[var(--foreground)] px-4 py-2 font-mono text-sm text-[var(--background)] transition-colors hover:opacity-90 disabled:opacity-50"
+            >
+              {claimingReferral ? "Claiming..." : "Claim Code"}
+            </button>
+          </div>
+        )}
+      </div>
 
       <div className="grid gap-5 md:grid-cols-3">
         {plans.map((plan) => {

@@ -10,6 +10,7 @@ export interface IProject extends Document {
   sourceLocale: string;
   targetLocales: string[];
   outputFormat: "next-intl" | "i18next";
+  analyticsEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -46,6 +47,10 @@ const projectSchema = new Schema<IProject>(
       type: String,
       enum: ["next-intl", "i18next"],
       default: "next-intl",
+    },
+    analyticsEnabled: {
+      type: Boolean,
+      default: true,
     },
   },
   { timestamps: true }

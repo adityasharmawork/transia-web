@@ -92,7 +92,11 @@ export async function POST(req: Request) {
       publicKey: { $in: uniqueKeys },
     }).lean();
 
-    const projectMap = new Map(projects.map((p) => [p.publicKey, p._id]));
+    const projectMap = new Map(
+      projects
+        .filter((p) => p.analyticsEnabled !== false)
+        .map((p) => [p.publicKey, p._id])
+    );
 
     const docs = validEvents
       .filter((e) => projectMap.has(e.projectId))

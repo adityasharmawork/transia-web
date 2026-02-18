@@ -4,6 +4,18 @@ export { Project, generateApiKey, hashApiKey, type IProject } from "./models/pro
 export { UsageLog, type IUsageLog } from "./models/usage-log";
 export { AnalyticsEvent, type IAnalyticsEvent } from "./models/analytics-event";
 export { Subscription, type ISubscription } from "./models/subscription";
+export { DiscountCoupon, type IDiscountCoupon } from "./models/discount-coupon";
+export { SaleCampaign, type ISaleCampaign } from "./models/sale-campaign";
+export {
+  CheckoutIntent,
+  type ICheckoutIntent,
+  type CheckoutDiscountSource,
+} from "./models/checkout-intent";
+export { ReferralConversion, type IReferralConversion } from "./models/referral-conversion";
+export {
+  ProcessedStripeEvent,
+  type IProcessedStripeEvent,
+} from "./models/processed-stripe-event";
 export { CliSession, type ICliSession } from "./models/cli-session";
 export { CliToken, hashToken, enforceTokenLimit, type ICliToken } from "./models/cli-token";
 export { TranslationCache, cacheHash, type ITranslationCache } from "./models/translation-cache";

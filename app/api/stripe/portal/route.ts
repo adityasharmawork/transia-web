@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { connectDB, Subscription } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
+import { getAppBaseUrl } from "@/lib/url";
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
     const user = await requireUser();
     await connectDB();
@@ -16,11 +17,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const origin = req.headers.get("origin") || "https://transia.dev";
+    const appBaseUrl = getAppBaseUrl();
 
     const session = await getStripe().billingPortal.sessions.create({
       customer: sub.stripeCustomerId,
-      return_url: `${origin}/dashboard/billing`,
+      return_url: `${appBaseUrl}/dashboard/billing`,
     });
 
     return NextResponse.json({ url: session.url });

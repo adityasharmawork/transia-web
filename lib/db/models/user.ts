@@ -5,6 +5,11 @@ export interface IUser extends Document {
   email: string;
   name: string;
   tier: "free" | "pro" | "team";
+  referralCode: string | null;
+  referredByUserId: mongoose.Types.ObjectId | null;
+  referralPoints: number;
+  firstPaidAt: Date | null;
+  referralWelcomeConsumedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,6 +24,27 @@ const userSchema = new Schema<IUser>(
       enum: ["free", "pro", "team"],
       default: "free",
     },
+    referralCode: {
+      type: String,
+      unique: true,
+      sparse: true,
+      index: true,
+      default: null,
+    },
+    referredByUserId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    referralPoints: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    firstPaidAt: { type: Date, default: null },
+    referralWelcomeConsumedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

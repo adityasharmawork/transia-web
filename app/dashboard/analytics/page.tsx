@@ -17,6 +17,7 @@ interface AnalyticsData {
   topPages: Array<{ page: string; count: number }>;
   countryBreakdown: Array<{ country: string; count: number }>;
   retentionDays: number;
+  analyticsEnabled?: boolean;
 }
 
 export default function AnalyticsPage() {
@@ -40,7 +41,6 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     if (!selectedProject) return;
-    setLoading(true);
     fetch(`/api/analytics/${selectedProject}`)
       .then((res) => res.json())
       .then((data) => setAnalytics(data))
@@ -102,6 +102,18 @@ export default function AnalyticsPage() {
         </div>
       ) : analytics ? (
         <div className="space-y-8">
+          {analytics.analyticsEnabled === false && (
+            <section className="rounded-lg border border-[var(--terminal-yellow)]/30 bg-[var(--terminal-yellow)]/5 p-6">
+              <h2 className="text-lg font-medium text-[var(--foreground)]">
+                Analytics Disabled
+              </h2>
+              <p className="mt-2 font-mono text-sm text-[var(--text-secondary)]">
+                Tracking is currently disabled for this project. Enable analytics
+                from the project settings to collect new events.
+              </p>
+            </section>
+          )}
+
           {/* Overview Cards */}
           <div className="grid grid-cols-4 gap-4">
             <StatCard

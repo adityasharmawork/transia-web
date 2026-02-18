@@ -2,6 +2,7 @@ import { Webhook } from "svix";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { connectDB, User } from "@/lib/db";
+import { ensureUserReferralCode } from "@/lib/referrals";
 
 interface ClerkWebhookEvent {
   type: string;
@@ -68,11 +69,19 @@ export async function POST(req: Request) {
     const name =
       [first_name, last_name].filter(Boolean).join(" ") || "User";
 
-    await User.findOneAndUpdate(
+    const user = await User.findOneAndUpdate(
       { clerkId: id },
       { clerkId: id, email, name },
       { upsert: true, new: true }
     );
+
+    if (user && !user.referralCode) {
+      try {
+        await ensureUserReferralCode(user._id);
+      } catch (error) {
+        console.error("Failed to assign referral code:", error);
+      }
+    }
   }
 
   if (event.type === "user.deleted") {

@@ -37,6 +37,30 @@ export const usageLogLimiter = new Ratelimit({
   prefix: "rl:usage-log",
 });
 
+export const billingQuoteLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(20, "1 m"),
+  prefix: "rl:billing-quote",
+});
+
+export const billingCheckoutLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, "1 m"),
+  prefix: "rl:billing-checkout",
+});
+
+export const referralClaimLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, "1 h"),
+  prefix: "rl:referral-claim",
+});
+
+export const adminMutationLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(60, "1 m"),
+  prefix: "rl:admin-mutation",
+});
+
 /**
  * Extract client IP from request headers.
  * Works with Vercel, Cloudflare, and standard proxies.

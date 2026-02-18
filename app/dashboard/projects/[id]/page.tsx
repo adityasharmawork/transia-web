@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useCallback } from "react";
 import { CopyIconButton } from "@/app/components/shared/copy-icon-button";
 
 interface Project {
@@ -11,6 +11,7 @@ interface Project {
   sourceLocale: string;
   targetLocales: string[];
   outputFormat: string;
+  analyticsEnabled: boolean;
   createdAt: string;
 }
 
@@ -42,21 +43,29 @@ export default function ProjectPage({
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
+  const [updatingAnalytics, setUpdatingAnalytics] = useState(false);
 
-  useEffect(() => {
-    fetchProject();
-  }, [id]);
-
-  async function fetchProject() {
+  const fetchProject = useCallback(async () => {
     try {
       const res = await fetch(`/api/projects/${id}`);
       if (res.ok) {
-        setData(await res.json());
+        const payload = await res.json();
+        if (
+          payload?.project &&
+          typeof payload.project.analyticsEnabled !== "boolean"
+        ) {
+          payload.project.analyticsEnabled = true;
+        }
+        setData(payload);
       }
     } finally {
       setLoading(false);
     }
-  }
+  }, [id]);
+
+  useEffect(() => {
+    fetchProject();
+  }, [fetchProject]);
 
   async function regenerateKey() {
     if (!confirm("Regenerate API key? The old key will stop working immediately. Make sure to copy the new key — it will only be shown once.")) {
@@ -74,6 +83,32 @@ export default function ProjectPage({
       }
     } finally {
       setRegenerating(false);
+    }
+  }
+
+  async function toggleAnalytics(nextValue: boolean) {
+    setUpdatingAnalytics(true);
+    try {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analyticsEnabled: nextValue }),
+      });
+      if (!res.ok) return;
+
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              project: {
+                ...prev.project,
+                analyticsEnabled: nextValue,
+              },
+            }
+          : prev
+      );
+    } finally {
+      setUpdatingAnalytics(false);
     }
   }
 
@@ -161,6 +196,31 @@ export default function ProjectPage({
         <p className="mt-2 font-mono text-xs text-[var(--text-muted)]">
           Use this key in your widget. It is safe to expose in client-side code — it can only send analytics, not trigger translations.
         </p>
+      </section>
+
+      {/* Analytics Tracking */}
+      <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
+        <h2 className="mb-2 text-lg font-medium text-[var(--foreground)]">
+          Analytics Tracking
+        </h2>
+        <p className="mb-4 text-sm text-[var(--text-secondary)]">
+          Control whether widget usage analytics are collected for this project.
+        </p>
+        <button
+          onClick={() => toggleAnalytics(!project.analyticsEnabled)}
+          disabled={updatingAnalytics}
+          className={`rounded-lg px-4 py-2 font-mono text-sm transition-colors ${
+            project.analyticsEnabled
+              ? "bg-[var(--terminal-green)]/10 text-[var(--terminal-green)] hover:bg-[var(--terminal-green)]/20"
+              : "border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+          } disabled:opacity-50`}
+        >
+          {updatingAnalytics
+            ? "Updating..."
+            : project.analyticsEnabled
+              ? "Disable Analytics"
+              : "Enable Analytics"}
+        </button>
       </section>
 
       {/* Quick Start */}
