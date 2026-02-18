@@ -125,7 +125,7 @@ export function Hero() {
           transition={{ duration: 0.7, delay: 0.2, ease }}
           className="mt-6 max-w-2xl text-lg leading-relaxed text-[var(--text-secondary)] md:text-xl"
         >
-          Turn your React app into a global product in under 60 seconds.
+          Turn your ReactJS / NextJS app into a global product in under 60 seconds.
           No translators, no delays, no rebuilt workflows.
         </motion.p>
 
