@@ -54,8 +54,23 @@ export async function POST(req: Request) {
     const existing = await ProcessedStripeEvent.findOne({
       eventId: event.id,
     }).lean();
-    if (existing?.status === "processed" || existing?.status === "processing") {
+    if (existing?.status === "processed") {
       return NextResponse.json({ received: true });
+    }
+    // Allow re-processing if stuck in "processing" for more than 5 minutes
+    // (e.g., serverless function timed out before completing)
+    if (existing?.status === "processing") {
+      const stuckThreshold = Date.now() - 5 * 60 * 1000;
+      const createdAt = existing.createdAt ? new Date(existing.createdAt).getTime() : 0;
+      if (createdAt > stuckThreshold) {
+        // Still actively processing — skip
+        return NextResponse.json({ received: true });
+      }
+      // Stale lock — allow re-processing by resetting status
+      await ProcessedStripeEvent.updateOne(
+        { eventId: event.id, status: "processing" },
+        { $set: { status: "processing", processedAt: null } }
+      );
     }
   }
 
@@ -264,13 +279,8 @@ async function applyCheckoutCompletion(input: {
       );
     }
 
-    if (checkoutIntent.discountSource === "coupon" && checkoutIntent.couponCode) {
-      await DiscountCoupon.updateOne(
-        { code: checkoutIntent.couponCode },
-        { $inc: { redemptionCount: 1 } },
-        { ...(dbSession ? { session: dbSession } : {}) }
-      );
-    }
+    // Coupon redemption count is atomically incremented at checkout creation time
+    // (in /api/stripe/checkout) to prevent race conditions. No increment needed here.
 
     if (checkoutIntent.discountSource === "referral") {
       await User.updateOne(

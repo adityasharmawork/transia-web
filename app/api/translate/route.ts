@@ -29,9 +29,24 @@ interface TranslateRequestBody {
   targetLocale: string;
 }
 
-// Strip control characters from context to mitigate prompt injection
-function sanitizeContext(ctx: string): string {
-  return ctx.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+// Strip control characters to mitigate prompt injection
+function sanitizeText(text: string): string {
+  return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+}
+
+/**
+ * Validate that AI-returned translations are flat strings (not objects/arrays)
+ * and do not contain XSS payloads.
+ */
+function validateAIResponse(translations: Record<string, unknown>): Record<string, string> {
+  const validated: Record<string, string> = {};
+  for (const [key, value] of Object.entries(translations)) {
+    if (typeof value !== "string") continue; // skip non-string values
+    if (/<script[\s>]/i.test(value)) continue; // skip XSS: script tags
+    if (/\bon\w+\s*=/i.test(value)) continue; // skip XSS: event handlers
+    validated[key] = value;
+  }
+  return validated;
 }
 
 function validateBody(
@@ -99,10 +114,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // Sanitize context fields
+    // Sanitize all user-supplied text fields to mitigate prompt injection
     for (const s of strings) {
+      s.original = sanitizeText(s.original);
       if (s.context) {
-        s.context = sanitizeContext(s.context);
+        s.context = sanitizeText(s.context);
       }
     }
 
@@ -190,7 +206,8 @@ export async function POST(req: Request) {
     const translations: Record<string, string> = {};
     const uncachedStrings: TranslationString[] = [];
 
-    const cacheHashes = strings.map((s) => cacheHash(s.original, sourceLocale, targetLocale));
+    const projectIdStr = project._id.toString();
+    const cacheHashes = strings.map((s) => cacheHash(s.original, sourceLocale, targetLocale, projectIdStr));
     const cachedDocs = await TranslationCache.find({ hash: { $in: cacheHashes } }).lean();
     const cacheMap = new Map(cachedDocs.map((doc) => [doc.hash, doc.translated]));
 
@@ -216,13 +233,14 @@ export async function POST(req: Request) {
     if (uncachedStrings.length > 0) {
       const providerChain: Array<{
         name: "gemini" | "grok";
-        translate: (key: string, strs: TranslationString[], src: string, tgt: string) => Promise<Record<string, string>>;
+        translate: (key: string, strs: TranslationString[], src: string, tgt: string) => Promise<Record<string, unknown>>;
       }> = [
         { name: "gemini", translate: translateWithGemini },
         { name: "grok", translate: translateWithGrok },
       ];
 
       let aiTranslations: Record<string, string> | null = null;
+      let rawAIResponse: Record<string, unknown> | null = null;
       let providerName = "";
 
       for (const provider of providerChain) {
@@ -232,7 +250,7 @@ export async function POST(req: Request) {
         if (!key) continue; // all keys for this provider are rate-limited
 
         try {
-          aiTranslations = await provider.translate(key, uncachedStrings, sourceLocale, targetLocale);
+          rawAIResponse = await provider.translate(key, uncachedStrings, sourceLocale, targetLocale);
           providerName = provider.name;
           break; // success — stop trying
         } catch (error) {
@@ -246,7 +264,12 @@ export async function POST(req: Request) {
         }
       }
 
-      if (!aiTranslations) {
+      // Validate AI response: ensure all values are safe flat strings
+      if (rawAIResponse) {
+        aiTranslations = validateAIResponse(rawAIResponse);
+      }
+
+      if (!aiTranslations || Object.keys(aiTranslations).length === 0) {
         return NextResponse.json(
           { error: "All translation providers are currently rate-limited. Please try again shortly." },
           { status: 503, headers: { "Retry-After": "60" } }
@@ -261,7 +284,7 @@ export async function POST(req: Request) {
         if (translated) {
           translations[s.key] = translated;
           cacheEntries.push({
-            hash: cacheHash(s.original, sourceLocale, targetLocale),
+            hash: cacheHash(s.original, sourceLocale, targetLocale, projectIdStr),
             original: s.original,
             sourceLocale,
             targetLocale,
@@ -301,7 +324,7 @@ async function translateWithGemini(
   strings: TranslationString[],
   sourceLocale: string,
   targetLocale: string
-): Promise<Record<string, string>> {
+): Promise<Record<string, unknown>> {
   const prompt = buildPrompt(strings, sourceLocale, targetLocale);
 
   // H3: Timeout for AI provider calls
@@ -357,7 +380,7 @@ async function translateWithGrok(
   strings: TranslationString[],
   sourceLocale: string,
   targetLocale: string
-): Promise<Record<string, string>> {
+): Promise<Record<string, unknown>> {
   const prompt = buildPrompt(strings, sourceLocale, targetLocale);
 
   // H3: Timeout for AI provider calls

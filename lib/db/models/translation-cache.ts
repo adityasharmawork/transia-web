@@ -31,11 +31,12 @@ export const TranslationCache: Model<ITranslationCache> =
   mongoose.model<ITranslationCache>("TranslationCache", translationCacheSchema);
 
 /**
- * Generate a cache key hash from the original string and locale pair.
+ * Generate a cache key hash from the original string, locale pair, and project ID.
+ * The projectId ensures tenant isolation — one user's translations never leak to another.
  */
-export function cacheHash(original: string, sourceLocale: string, targetLocale: string): string {
+export function cacheHash(original: string, sourceLocale: string, targetLocale: string, projectId: string): string {
   return crypto
     .createHash("sha256")
-    .update(`${original}|${sourceLocale}|${targetLocale}`)
+    .update(`${projectId}|${original}|${sourceLocale}|${targetLocale}`)
     .digest("hex");
 }

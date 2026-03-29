@@ -2,10 +2,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { connectDB, CliSession, CliToken, hashToken, enforceTokenLimit, User } from "@/lib/db";
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const sessionToken = searchParams.get("session");
-
+async function handleStatus(sessionToken: string | null) {
   if (!sessionToken) {
     return NextResponse.json(
       { error: "Missing session parameter" },
@@ -13,7 +10,7 @@ export async function GET(req: Request) {
     );
   }
 
-  // Throttle polling to slow brute-force attempts (C4)
+  // Throttle polling to slow brute-force attempts
   await new Promise((resolve) => setTimeout(resolve, 500));
 
   await connectDB();
@@ -52,3 +49,12 @@ export async function GET(req: Request) {
 
   return NextResponse.json({ status: session.status });
 }
+
+// POST: session token in request body (secure — not logged by proxies/CDNs)
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => ({}));
+  return handleStatus(body.session ?? null);
+}
+
+// GET removed — session tokens must not appear in URL query params
+// (logged by proxies, CDNs, and browser history). Use POST instead.

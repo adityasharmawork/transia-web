@@ -63,20 +63,83 @@ export const adminMutationLimiter = new Ratelimit({
 
 /**
  * Extract client IP from request headers.
- * Works with Vercel, Cloudflare, and standard proxies.
+ * Prefers platform-set headers that cannot be spoofed by clients,
+ * then falls back to x-real-ip and finally x-forwarded-for.
  */
 export function getClientIp(req: Request): string {
   const headers = new Headers(req.headers);
   return (
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    // Vercel sets this from the connecting IP — cannot be spoofed
+    headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ||
+    // Cloudflare sets this from the connecting IP — cannot be spoofed
+    headers.get("cf-connecting-ip") ||
+    // Set by most reverse proxies from the socket address
     headers.get("x-real-ip") ||
+    // Fallback: take only the rightmost (closest proxy) entry, which is
+    // harder to spoof than the leftmost (client-supplied) entry
+    headers.get("x-forwarded-for")?.split(",").pop()?.trim() ||
     "unknown"
   );
 }
 
+// --- In-memory fallback rate limiter ---
+// Used when Redis is unavailable. Provides basic protection
+// with automatic entry expiry. Not shared across serverless
+// instances but still better than allowing unlimited requests.
+
+const memoryStore = new Map<string, { count: number; resetAt: number }>();
+const MEMORY_CLEANUP_INTERVAL = 60_000;
+let lastCleanup = Date.now();
+
+function memoryRateLimit(
+  identifier: string,
+  maxRequests: number,
+  windowMs: number,
+): { success: boolean; retryAfterSec: number } {
+  const now = Date.now();
+
+  // Periodic cleanup of expired entries to prevent memory leaks
+  if (now - lastCleanup > MEMORY_CLEANUP_INTERVAL) {
+    for (const [key, entry] of memoryStore) {
+      if (now > entry.resetAt) memoryStore.delete(key);
+    }
+    lastCleanup = now;
+  }
+
+  const entry = memoryStore.get(identifier);
+
+  if (!entry || now > entry.resetAt) {
+    memoryStore.set(identifier, { count: 1, resetAt: now + windowMs });
+    return { success: true, retryAfterSec: 0 };
+  }
+
+  entry.count++;
+  if (entry.count > maxRequests) {
+    const retryAfterSec = Math.ceil((entry.resetAt - now) / 1000);
+    return { success: false, retryAfterSec: Math.max(retryAfterSec, 1) };
+  }
+
+  return { success: true, retryAfterSec: 0 };
+}
+
+// Default fallback limits (conservative) per limiter prefix
+const FALLBACK_LIMITS: Record<string, { max: number; windowMs: number }> = {
+  "rl:auth-init": { max: 5, windowMs: 60_000 },
+  "rl:analytics": { max: 30, windowMs: 60_000 },
+  "rl:translate": { max: 10, windowMs: 60_000 },
+  "rl:usage-log": { max: 30, windowMs: 60_000 },
+  "rl:billing-quote": { max: 20, windowMs: 60_000 },
+  "rl:billing-checkout": { max: 10, windowMs: 60_000 },
+  "rl:referral-claim": { max: 10, windowMs: 3_600_000 },
+  "rl:admin-mutation": { max: 60, windowMs: 60_000 },
+};
+
 /**
  * Check rate limit and return a 429 response if exceeded.
  * Returns null if the request is allowed.
+ *
+ * Fail-closed: if Redis is unavailable, falls back to an in-memory
+ * rate limiter instead of allowing unlimited requests.
  */
 export async function checkRateLimit(
   limiter: Ratelimit,
@@ -99,8 +162,26 @@ export async function checkRateLimit(
     }
     return null;
   } catch {
-    // If Redis is unavailable, allow the request through (fail-open).
-    // Rate limiting should not break the application.
+    // Redis unavailable — fall back to in-memory rate limiting.
+    // This is per-instance only (not shared across serverless functions)
+    // but still provides basic protection against abuse.
+    const prefix = (limiter as unknown as { prefix?: string }).prefix ?? "rl:default";
+    const limits = FALLBACK_LIMITS[prefix] ?? { max: 10, windowMs: 60_000 };
+    const fallbackKey = `${prefix}:${identifier}`;
+    const result = memoryRateLimit(fallbackKey, limits.max, limits.windowMs);
+
+    if (!result.success) {
+      return new Response(
+        JSON.stringify({ error: "Too many requests. Please try again later." }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": String(result.retryAfterSec),
+          },
+        },
+      );
+    }
     return null;
   }
 }

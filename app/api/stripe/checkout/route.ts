@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { isPaidTier } from "@/lib/billing/constants";
 import { resolveBestDiscount } from "@/lib/billing/discount-engine";
-import { connectDB, CheckoutIntent, Subscription } from "@/lib/db";
+import { connectDB, CheckoutIntent, Subscription, DiscountCoupon } from "@/lib/db";
 import { billingCheckoutLimiter, checkRateLimit } from "@/lib/rate-limit";
 import { getStripe, PRICE_IDS } from "@/lib/stripe";
 import { getAppBaseUrl } from "@/lib/url";
@@ -52,6 +52,30 @@ export async function POST(req: Request) {
         { error: discount.coupon.reason || "Invalid coupon code" },
         { status: 400 }
       );
+    }
+
+    // Atomically reserve coupon redemption to prevent race conditions.
+    // The increment happens here (at checkout) rather than in the webhook,
+    // so concurrent checkouts can't over-redeem a limited coupon.
+    if (discount.selected.source === "coupon" && discount.selected.couponCode) {
+      const reserved = await DiscountCoupon.findOneAndUpdate(
+        {
+          code: discount.selected.couponCode,
+          active: true,
+          $or: [
+            { maxRedemptions: null },
+            { $expr: { $lt: ["$redemptionCount", "$maxRedemptions"] } },
+          ],
+        },
+        { $inc: { redemptionCount: 1 } },
+        { new: true }
+      );
+      if (!reserved) {
+        return NextResponse.json(
+          { error: "Coupon redemption limit reached" },
+          { status: 400 }
+        );
+      }
     }
 
     if (discount.selected.source === "points") {

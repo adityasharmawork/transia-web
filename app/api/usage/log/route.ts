@@ -28,10 +28,13 @@ export async function POST(req: Request) {
   const { projectApiKey, stringsTranslated, tokensUsed, provider, locale } =
     body;
 
-  // Find the project by API key if provided, otherwise log without project association
+  // Find the project by API key — verify the authenticated user owns it
   let projectId = null;
   if (projectApiKey) {
-    const project = await Project.findOne({ apiKeyHash: hashApiKey(projectApiKey) });
+    const project = await Project.findOne({
+      apiKeyHash: hashApiKey(projectApiKey),
+      userId: tokenDoc.userId,
+    });
     if (project) {
       projectId = project._id;
     }

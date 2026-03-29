@@ -25,6 +25,21 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=()",
   },
+  {
+    key: "Content-Security-Policy",
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https://img.clerk.com",
+      "font-src 'self'",
+      "connect-src 'self' https://api.stripe.com https://*.clerk.accounts.dev https://*.clerk.dev",
+      "frame-src https://js.stripe.com https://*.clerk.accounts.dev",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; "),
+  },
 ];
 
 const nextConfig: NextConfig = {
@@ -36,7 +51,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  poweredBy: false,
+  // X-Powered-By header is disabled by default in Next.js 16+
 };
 
 export default nextConfig;
