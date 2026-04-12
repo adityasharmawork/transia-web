@@ -10,8 +10,14 @@ const isPublicRoute = createRouteMatcher([
   "/auth/cli(.*)",
   // CLI auth endpoints (init, confirm, status) use their own token auth
   "/api/auth/cli/(.*)",
+  // Token verification uses Bearer token auth, not Clerk
+  "/api/auth/verify",
+  // Token management uses Bearer token auth
+  "/api/auth/tokens",
   // Translation API uses Bearer token auth, not Clerk
   "/api/translate",
+  // Usage logging uses Bearer token auth
+  "/api/usage/(.*)",
   // Webhooks verify signatures themselves (Stripe HMAC, Clerk/Svix)
   "/api/webhooks/(.*)",
   // Widget analytics endpoint is public (rate-limited by IP)
