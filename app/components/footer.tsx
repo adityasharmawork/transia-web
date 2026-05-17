@@ -33,7 +33,7 @@ export function Footer() {
           </a>
           <span className="text-[var(--text-muted)]">&middot;</span>
           <a
-            href="#"
+            href="/docs"
             className="link-underline font-mono text-sm text-[var(--text-tertiary)] transition-colors hover:text-[var(--foreground)]"
           >
             Documentation

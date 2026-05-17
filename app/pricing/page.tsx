@@ -35,7 +35,7 @@ const tiers = [
       "Managed translations (10K strings/mo)",
       "No API keys to manage",
       "10 projects",
-      "Remove widget branding",
+      "Custom widget branding",
       "Full analytics (1-year retention)",
       "Email support",
     ],
@@ -88,11 +88,10 @@ function PricingCard({
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.6, delay: 0.1 + index * 0.12, ease }}
       whileHover={{ y: -4 }}
-      className={`group relative rounded-2xl border p-8 transition-shadow duration-300 ${
-        tier.highlighted
+      className={`group relative rounded-2xl border p-8 transition-shadow duration-300 ${tier.highlighted
           ? "border-[var(--foreground)]/20 bg-[var(--surface)] shadow-xl hover:shadow-2xl"
           : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-hover)] hover:shadow-lg"
-      }`}
+        }`}
     >
       {/* Hover glow effect */}
       <div
@@ -167,11 +166,10 @@ function PricingCard({
 
       <Link
         href={tier.ctaHref}
-        className={`relative block w-full overflow-hidden rounded-lg py-3 text-center font-mono text-sm transition-all duration-300 ${
-          tier.highlighted
+        className={`relative block w-full overflow-hidden rounded-lg py-3 text-center font-mono text-sm transition-all duration-300 ${tier.highlighted
             ? "bg-[var(--foreground)] text-[var(--background)] hover:shadow-lg"
             : "border border-[var(--border-hover)] text-[var(--foreground)] hover:bg-[var(--glow)] hover:shadow-md"
-        }`}
+          }`}
       >
         <span className="relative z-10">{tier.cta}</span>
         {/* Shine on hover */}
