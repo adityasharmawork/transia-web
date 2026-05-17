@@ -28,7 +28,7 @@ const plans = [
     features: [
       "Managed translations (10K strings/mo)",
       "10 projects",
-      "Remove widget branding",
+      "Custom widget branding",
       "1-year analytics",
       "Email support",
     ],
@@ -88,11 +88,10 @@ export default function OnboardingPage() {
               <button
                 key={plan.id}
                 onClick={() => setSelected(plan.id)}
-                className={`relative cursor-pointer rounded-xl border p-6 text-left transition-all ${
-                  isSelected
+                className={`relative cursor-pointer rounded-xl border p-6 text-left transition-all ${isSelected
                     ? "border-[var(--foreground)] bg-[var(--surface)] shadow-lg ring-1 ring-[var(--foreground)]/20"
                     : "border-[var(--border)] bg-[var(--surface)] hover:border-[var(--border-hover)]"
-                }`}
+                  }`}
               >
                 {plan.badge && (
                   <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-[var(--foreground)] px-3 py-0.5 font-mono text-[10px] text-[var(--background)]">
@@ -133,11 +132,10 @@ export default function OnboardingPage() {
 
                 {/* Selection indicator */}
                 <div
-                  className={`mt-5 flex h-8 items-center justify-center rounded-md font-mono text-xs transition-colors ${
-                    isSelected
+                  className={`mt-5 flex h-8 items-center justify-center rounded-md font-mono text-xs transition-colors ${isSelected
                       ? "bg-[var(--foreground)] text-[var(--background)]"
                       : "border border-[var(--border)] text-[var(--text-muted)]"
-                  }`}
+                    }`}
                 >
                   {isSelected ? "Selected" : "Select"}
                 </div>

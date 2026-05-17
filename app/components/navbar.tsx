@@ -46,6 +46,12 @@ export function Navbar() {
 
         <div className="flex items-center gap-4">
           <a
+            href="/docs"
+            className="link-underline hidden font-mono text-sm text-[var(--text-secondary)] transition-colors hover:text-[var(--foreground)] sm:inline"
+          >
+            Docs
+          </a>
+          <a
             href="/pricing"
             className="link-underline hidden font-mono text-sm text-[var(--text-secondary)] transition-colors hover:text-[var(--foreground)] sm:inline"
           >

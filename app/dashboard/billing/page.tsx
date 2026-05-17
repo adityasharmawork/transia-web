@@ -30,7 +30,7 @@ const plans = [
       "Managed translations (10K strings/mo)",
       "No API keys to manage",
       "10 projects",
-      "Remove widget branding",
+      "Custom widget branding",
       "1-year analytics retention",
       "Email support",
     ],
@@ -224,11 +224,10 @@ export default function BillingPage() {
 
       {message && (
         <div
-          className={`mb-6 rounded-lg border px-4 py-3 font-mono text-sm ${
-            message.type === "success"
+          className={`mb-6 rounded-lg border px-4 py-3 font-mono text-sm ${message.type === "success"
               ? "border-[var(--terminal-green)]/30 bg-[var(--terminal-green)]/5 text-[var(--terminal-green)]"
               : "border-red-500/30 bg-red-500/5 text-red-500"
-          }`}
+            }`}
         >
           {message.text}
         </div>
@@ -304,11 +303,10 @@ export default function BillingPage() {
           return (
             <div
               key={plan.id}
-              className={`relative rounded-xl border p-6 transition-all ${
-                isCurrent
+              className={`relative rounded-xl border p-6 transition-all ${isCurrent
                   ? "border-[var(--foreground)]/20 bg-[var(--surface)] shadow-lg ring-1 ring-[var(--foreground)]/10"
                   : "border-[var(--border)] bg-[var(--surface)]"
-              }`}
+                }`}
             >
               {isCurrent && (
                 <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-[var(--foreground)] px-3 py-0.5 font-mono text-[10px] text-[var(--background)]">
@@ -356,18 +354,17 @@ export default function BillingPage() {
               <button
                 onClick={() => handleChangeTier(plan.id)}
                 disabled={isCurrent || isChanging}
-                className={`block w-full rounded-lg py-2.5 text-center font-mono text-sm transition-colors ${
-                  isCurrent
+                className={`block w-full rounded-lg py-2.5 text-center font-mono text-sm transition-colors ${isCurrent
                     ? "cursor-default border border-[var(--border)] text-[var(--text-muted)]"
                     : "bg-[var(--foreground)] text-[var(--background)] hover:opacity-90 disabled:opacity-50"
-                }`}
+                  }`}
               >
                 {isCurrent
                   ? "Current Plan"
                   : isChanging
                     ? "Redirecting..."
                     : plans.findIndex((p) => p.id === plan.id) >
-                        plans.findIndex((p) => p.id === currentTier)
+                      plans.findIndex((p) => p.id === currentTier)
                       ? `Upgrade to ${plan.name}`
                       : `Switch to ${plan.name}`}
               </button>

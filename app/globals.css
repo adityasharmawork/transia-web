@@ -136,6 +136,15 @@ main {
   color: var(--foreground);
 }
 
+/* Selection inside dark code blocks — override to stay visible */
+pre::selection,
+pre *::selection,
+code::selection,
+code *::selection {
+  background: rgba(56, 132, 255, 0.4);
+  color: #ffffff;
+}
+
 /* ============================
    GRAIN NOISE OVERLAY
    ============================ */
