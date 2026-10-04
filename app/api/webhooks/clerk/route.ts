@@ -45,8 +45,9 @@ export async function POST(req: Request) {
     );
   }
 
-  const payload = await req.json();
-  const body = JSON.stringify(payload);
+  // SECURITY: svix signs the RAW request bytes. Verify those exact bytes;
+  // re-serializing via req.json() + JSON.stringify breaks valid signatures.
+  const body = await req.text();
 
   const wh = new Webhook(WEBHOOK_SECRET);
   let event: ClerkWebhookEvent;
