@@ -10,6 +10,10 @@ const isPublicRoute = createRouteMatcher([
   "/auth/cli(.*)",
   // CLI auth endpoints (init, confirm, status) use their own token auth
   "/api/auth/cli/(.*)",
+  // CLI project endpoints use Bearer token auth, not Clerk
+  "/api/cli/(.*)",
+  // Public documentation
+  "/docs(.*)",
   // Token verification uses Bearer token auth, not Clerk
   "/api/auth/verify",
   // Token management uses Bearer token auth
