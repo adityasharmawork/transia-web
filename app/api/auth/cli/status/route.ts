@@ -53,7 +53,12 @@ async function handleStatus(sessionToken: string | null) {
 // POST: session token in request body (secure — not logged by proxies/CDNs)
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
-  return handleStatus(body.session ?? null);
+  // SECURITY: only a string is a valid session token. Reject objects
+  // (e.g. { $ne: null }) that would become live Mongo query operators.
+  if (typeof body.session !== "string") {
+    return NextResponse.json({ error: "Invalid session parameter" }, { status: 400 });
+  }
+  return handleStatus(body.session);
 }
 
 // GET removed — session tokens must not appear in URL query params

@@ -10,7 +10,8 @@ export async function POST(req: Request) {
   }
 
   const { sessionToken } = await req.json();
-  if (!sessionToken) {
+  // SECURITY: only a string is a valid session token (block operator injection).
+  if (typeof sessionToken !== "string" || !sessionToken) {
     return NextResponse.json(
       { error: "Missing sessionToken" },
       { status: 400 }
