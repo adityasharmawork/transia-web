@@ -49,7 +49,6 @@ const checkoutIntentSchema = new Schema<ICheckoutIntent>(
     stripeCustomerId: { type: String, default: null },
     stripeCheckoutSessionId: {
       type: String,
-      default: null,
       unique: true,
       sparse: true,
       index: true,

@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
 
+// SECURITY: neutralise query-operator injection on every findOne/find filter.
+// Attacker-supplied objects like { $ne: null } are wrapped in { $eq: ... }.
+mongoose.set("sanitizeFilter", true);
+
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
@@ -36,6 +40,13 @@ export async function connectDB(): Promise<typeof mongoose> {
     });
   }
 
-  cached.conn = await cached.promise;
+  try {
+    cached.conn = await cached.promise;
+  } catch (err) {
+    // Do not cache a rejected promise: a transient failure must not wedge the
+    // process forever. Reset so the next call retries the connection.
+    cached.promise = null;
+    throw err;
+  }
   return cached.conn;
 }

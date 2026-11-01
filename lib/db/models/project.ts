@@ -11,6 +11,7 @@ export interface IProject extends Document {
   targetLocales: string[];
   outputFormat: "next-intl" | "i18next";
   analyticsEnabled: boolean;
+  allowedOrigins?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -48,6 +49,9 @@ const projectSchema = new Schema<IProject>(
       enum: ["next-intl", "i18next"],
       default: "next-intl",
     },
+    // Per-project Origin allowlist for widget analytics. Empty/absent = allow any
+    // (back-compat); when set, events from other origins are dropped.
+    allowedOrigins: { type: [String], default: undefined },
     analyticsEnabled: {
       type: Boolean,
       default: true,

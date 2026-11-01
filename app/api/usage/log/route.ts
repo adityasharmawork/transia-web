@@ -28,6 +28,11 @@ export async function POST(req: Request) {
   const { projectApiKey, stringsTranslated, tokensUsed, provider, locale } =
     body;
 
+  // SECURITY: usage counts feed the monthly quota sum; negatives would let a
+  // client drive the quota below zero and translate without limit.
+  const safeStrings = Number.isInteger(stringsTranslated) && stringsTranslated >= 0 ? stringsTranslated : 0;
+  const safeTokens = Number.isInteger(tokensUsed) && tokensUsed >= 0 ? tokensUsed : 0;
+
   // Find the project by API key — verify the authenticated user owns it
   let projectId = null;
   if (projectApiKey) {
@@ -43,8 +48,8 @@ export async function POST(req: Request) {
   if (projectId) {
     await UsageLog.create({
       projectId,
-      stringsTranslated: stringsTranslated || 0,
-      tokensUsed: tokensUsed || 0,
+      stringsTranslated: safeStrings,
+      tokensUsed: safeTokens,
       provider: provider || "unknown",
       locale: locale || "unknown",
     });

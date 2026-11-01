@@ -29,7 +29,6 @@ const userSchema = new Schema<IUser>(
       unique: true,
       sparse: true,
       index: true,
-      default: null,
     },
     referredByUserId: {
       type: Schema.Types.ObjectId,
