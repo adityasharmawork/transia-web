@@ -3,38 +3,16 @@
 import { motion, useInView } from "motion/react";
 import { useRef } from "react";
 
-const reviews = [
-  {
-    quote:
-      "We replaced our entire i18n pipeline with one CLI command. Transia paid for itself before lunch.",
-    attribution: "Engineering Lead, Series B SaaS",
-  },
-  {
-    quote:
-      "Our competitors took 3 months to localize. We launched in 12 markets over a weekend. That's the difference Transia makes.",
-    attribution: "CTO, YC-backed Fintech Startup",
-  },
-  {
-    quote:
-      "We went from English-only to 8 languages in production without a single engineer touching a JSON file. Revenue from non-English markets doubled in 6 weeks.",
-    attribution: "VP of Engineering, E-Commerce Platform",
-  },
-  {
-    quote:
-      "I ran one command before a demo and our investor saw the product in Japanese. He wrote the check that afternoon.",
-    attribution: "Solo Founder, Developer Tools",
-  },
+// Pre-launch: no customers yet, so these are the product's own principles stated
+// plainly — NOT attributed testimonials. Keep them honest and verifiable.
+const principles = [
+  "Replace your entire i18n pipeline with one command — no JSON files to hand-edit, no separate translation workflow.",
+  "Bring your own provider keys, or use managed translation. Same CLI, your call.",
+  "Go from English-only to a dozen languages in production, from the codebase you already ship.",
+  "Add a locale in seconds: re-run one command and every new string comes back translated.",
 ];
 
-function ReviewCard({
-  quote,
-  attribution,
-  index,
-}: {
-  quote: string;
-  attribution: string;
-  index: number;
-}) {
+function PrincipleCard({ quote, index }: { quote: string; index: number }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(cardRef, {
     once: true,
@@ -87,25 +65,11 @@ function ReviewCard({
                 className="inline-block"
               >
                 {word}
-                {i < words.length - 1 ? "\u00A0" : ""}
+                {i < words.length - 1 ? " " : ""}
               </motion.span>
             ))}
             &rdquo;
           </p>
-          <motion.footer
-            initial={{ opacity: 0 }}
-            animate={isInView ? { opacity: 1 } : {}}
-            transition={{
-              duration: 0.6,
-              delay: words.length * 0.03 + 0.6,
-              ease: [0.25, 0.1, 0.25, 1],
-            }}
-            className="mt-10"
-          >
-            <span className="font-mono text-sm text-[var(--text-tertiary)]">
-              &mdash; {attribution}
-            </span>
-          </motion.footer>
         </blockquote>
       </div>
     </div>
@@ -115,13 +79,8 @@ function ReviewCard({
 export function FullWidthQuote() {
   return (
     <section>
-      {reviews.map((review, i) => (
-        <ReviewCard
-          key={i}
-          quote={review.quote}
-          attribution={review.attribution}
-          index={i}
-        />
+      {principles.map((quote, i) => (
+        <PrincipleCard key={i} quote={quote} index={i} />
       ))}
     </section>
   );

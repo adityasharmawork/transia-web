@@ -14,7 +14,7 @@ export function SocialProof() {
     <section className="border-y border-[var(--border)] py-16 md:py-20">
       <AnimatedSection className="mx-auto max-w-6xl px-6">
         <p className="mb-12 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--text-tertiary)]">
-          Trusted by teams shipping to global markets
+          Works with the stack you already ship
         </p>
 
         <div className="relative overflow-hidden">
