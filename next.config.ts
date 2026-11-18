@@ -1,4 +1,14 @@
 import type { NextConfig } from "next";
+import { buildContentSecurityPolicy } from "./lib/security/csp";
+
+// The Clerk Frontend API origin is derived from the publishable key (dev uses
+// *.clerk.accounts.dev; prod uses a customer domain), so the CSP works in prod
+// without a hardcoded dev host. `NEXT_PUBLIC_CLERK_FRONTEND_API` can override it.
+const contentSecurityPolicy = buildContentSecurityPolicy({
+  publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+  frontendApiOverride: process.env.NEXT_PUBLIC_CLERK_FRONTEND_API,
+  isDev: process.env.NODE_ENV !== "production",
+});
 
 const securityHeaders = [
   {
@@ -27,19 +37,7 @@ const securityHeaders = [
   },
   {
     key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://*.clerk.accounts.dev https://challenges.cloudflare.com",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://img.clerk.com https://*.clerk.com",
-      "font-src 'self' https://*.clerk.accounts.dev",
-      "connect-src 'self' https://api.stripe.com https://*.clerk.accounts.dev https://*.clerk.dev https://*.clerk.com",
-      "frame-src https://js.stripe.com https://*.clerk.accounts.dev https://*.clerk.dev https://challenges.cloudflare.com",
-      "worker-src 'self' blob:",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-    ].join("; "),
+    value: contentSecurityPolicy,
   },
 ];
 
