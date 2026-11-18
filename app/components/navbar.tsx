@@ -58,7 +58,7 @@ export function Navbar() {
             Pricing
           </a>
           <a
-            href="https://github.com"
+            href="https://github.com/adityasharmawork/transia-cli"
             target="_blank"
             rel="noopener noreferrer"
             className="link-underline hidden font-mono text-sm text-[var(--text-secondary)] transition-colors hover:text-[var(--foreground)] sm:inline"

@@ -27,7 +27,7 @@ const tabContent: Record<Tab, React.ReactNode> = {
         {"  "}1. Add your API key to <span className="text-[var(--terminal-yellow)]">.env</span> or <span className="text-[var(--terminal-yellow)]">.env.local</span>:
       </div>
       <div className="mt-1 text-white/50">
-        {"     "}# For OpenAI (default provider)
+        {"     "}# For OpenAI
       </div>
       <div className="text-white">
         {"     "}OPENAI_API_KEY=your-key-here

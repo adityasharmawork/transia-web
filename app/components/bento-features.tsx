@@ -164,7 +164,7 @@ export function BentoFeatures() {
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-[var(--text-secondary)]">
                 Secrets auto-redacted from AI prompts. Atomic writes prevent
-                corruption. Auth errors abort immediately. Your data never leaves your control.
+                corruption. Auth errors abort immediately. Your API keys never leave your environment.
               </p>
               <div className="mt-6 space-y-1 font-mono text-xs text-[var(--text-muted)]">
                 <div>[OPENAI_KEY] &rarr; [REDACTED]</div>
