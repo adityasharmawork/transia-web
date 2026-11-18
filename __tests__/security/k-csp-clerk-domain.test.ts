@@ -52,6 +52,11 @@ describe("buildContentSecurityPolicy", () => {
     const found = csp.split(";").map((d) => d.trim()).find((d) => d.startsWith(name + " "));
     return found ?? "";
   };
+  // Exact tokens of a directive (everything after the directive name).
+  const tokens = (csp: string, name: string): string[] => {
+    const d = dir(csp, name);
+    return d ? d.split(" ").slice(1) : [];
+  };
 
   it("production + live key: uses the prod FAPI host across the right directives", () => {
     const csp = buildContentSecurityPolicy({ publishableKey: LIVE_KEY, isDev: false });
@@ -68,10 +73,21 @@ describe("buildContentSecurityPolicy", () => {
     expect(csp).not.toContain("*.clerk.accounts.dev");
   });
 
-  it("includes Clerk bot-protection (*.protect.clerk.com) in script/connect-src", () => {
+  it("includes Clerk bot-protection with the correct per-directive port handling", () => {
     const csp = buildContentSecurityPolicy({ publishableKey: LIVE_KEY, isDev: false });
-    expect(dir(csp, "script-src")).toContain("https://*.protect.clerk.com");
-    expect(dir(csp, "connect-src")).toContain("https://*.protect.clerk.com");
+    // script-src: port-less (served on 443).
+    expect(tokens(csp, "script-src")).toContain("https://*.protect.clerk.com");
+    // connect-src: MUST carry :* — Clerk abuse/fraud hosts use non-443 ports, and a
+    // CSP host source with no port matches port 443 only.
+    expect(tokens(csp, "connect-src")).toContain("https://*.protect.clerk.com:*");
+    // frame-src: the bot-protection challenge iframe.
+    expect(tokens(csp, "frame-src")).toContain("https://*.protect.clerk.com");
+  });
+
+  it("allows both bare and wildcard Clerk telemetry hosts in connect-src", () => {
+    const csp = buildContentSecurityPolicy({ publishableKey: LIVE_KEY, isDev: false });
+    expect(tokens(csp, "connect-src")).toContain("https://clerk-telemetry.com");
+    expect(tokens(csp, "connect-src")).toContain("https://*.clerk-telemetry.com");
   });
 
   it("dev + test key: includes 'unsafe-eval', the dev wildcard, and the dev host", () => {
@@ -95,6 +111,27 @@ describe("buildContentSecurityPolicy", () => {
     });
     expect(dir(csp, "script-src")).toContain("https://clerk.custom.example");
     expect(csp).not.toContain("https://*.clerk.accounts.dev");
+  });
+
+  it("ignores an invalid override (contains a scheme) and falls back to the key", () => {
+    const csp = buildContentSecurityPolicy({
+      publishableKey: LIVE_KEY,
+      frontendApiOverride: "https://clerk.evil.example",
+      isDev: false,
+    });
+    expect(csp).not.toContain("https://https://"); // no doubled-scheme token
+    expect(csp).not.toContain("clerk.evil.example");
+    expect(tokens(csp, "script-src")).toContain(`https://${PROD_HOST}`); // fell back to key
+  });
+
+  it("ignores an override containing a space (no CSP token injection)", () => {
+    const csp = buildContentSecurityPolicy({
+      publishableKey: LIVE_KEY,
+      frontendApiOverride: "clerk.ok.example evil.example",
+      isDev: false,
+    });
+    expect(csp).not.toContain("evil.example");
+    expect(tokens(csp, "script-src")).toContain(`https://${PROD_HOST}`);
   });
 
   it("no key: still emits a valid, locked-down CSP", () => {

@@ -18,21 +18,19 @@ const HOSTNAME_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9
 /**
  * Extract the FAPI host from a Clerk publishable key.
  * Keys are `pk_(test|live)_<base64(fapiHost + "$")>`. Returns `null` for anything
- * that is not a well-formed key decoding to a bare hostname (so a tampered key
- * can never inject an arbitrary origin into the CSP).
+ * that is not a well-formed key decoding to a bare hostname, so a malformed value
+ * can never break out of its CSP token by injecting a scheme, path, port, or an
+ * extra space-separated source. (It cannot stop someone who already controls the
+ * env var from naming another bare host — env control is CSP control.)
  */
 export function parseClerkFapiHost(publishableKey?: string): string | null {
   if (!publishableKey) return null;
   const match = /^pk_(test|live)_(.+)$/.exec(publishableKey.trim());
   if (!match) return null;
 
-  let decoded: string;
-  try {
-    decoded = Buffer.from(match[2], "base64").toString("utf8");
-  } catch {
-    return null;
-  }
-
+  // Buffer.from(..., "base64") is lenient and never throws; HOSTNAME_RE below is
+  // the real guard against a malformed or tampered key.
+  const decoded = Buffer.from(match[2], "base64").toString("utf8");
   // Strip the trailing `$` sentinel Clerk appends before base64-encoding.
   const host = decoded.replace(/\$+$/, "").trim();
   return HOSTNAME_RE.test(host) ? host : null;
@@ -57,7 +55,10 @@ export interface CspOptions {
  *     still works.
  */
 export function buildContentSecurityPolicy(opts: CspOptions): string {
-  const override = opts.frontendApiOverride?.trim();
+  const rawOverride = opts.frontendApiOverride?.trim();
+  // Validate the operator-set override the same way as the key-derived host so a
+  // stray scheme/space can't break or inject a CSP token. Invalid → ignore it.
+  const override = rawOverride && HOSTNAME_RE.test(rawOverride) ? rawOverride : null;
   const fapiHost = override || parseClerkFapiHost(opts.publishableKey);
   const fapi = fapiHost ? `https://${fapiHost}` : null;
 
@@ -66,7 +67,9 @@ export function buildContentSecurityPolicy(opts: CspOptions): string {
   const isDevInstance = !override && (opts.publishableKey ?? "").startsWith("pk_test_");
   const accountsDev = isDevInstance ? "https://*.clerk.accounts.dev" : null;
 
-  const protect = "https://*.protect.clerk.com"; // Clerk bot protection
+  // Clerk bot protection. connect-src needs ":*" because Clerk's abuse/fraud hosts
+  // are served on non-443 ports, and a port-less CSP source matches port 443 only.
+  const protect = "https://*.protect.clerk.com";
 
   const scriptSrc = [
     "'self'",
@@ -83,14 +86,16 @@ export function buildContentSecurityPolicy(opts: CspOptions): string {
     "'self'",
     "https://api.stripe.com",
     fapi,
-    protect,
+    `${protect}:*`, // non-443 abuse/fraud-protection ports
     "https://clerk-telemetry.com",
+    "https://*.clerk-telemetry.com",
     accountsDev,
   ];
 
   const frameSrc = [
     "https://js.stripe.com",
     fapi,
+    protect,
     "https://challenges.cloudflare.com",
     accountsDev,
   ];
