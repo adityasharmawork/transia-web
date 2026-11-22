@@ -69,7 +69,7 @@ export function CtaBanner() {
             Go Global Now
           </MagneticButton>
           <MagneticButton
-            href="https://github.com"
+            href="https://github.com/adityasharmawork/transia-cli"
             className="rounded-full border border-[var(--border-hover)] px-8 py-3 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--glow)]"
           >
             View on GitHub

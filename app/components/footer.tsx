@@ -8,7 +8,7 @@ export function Footer() {
 
         <div className="flex items-center gap-6">
           <a
-            href="https://github.com"
+            href="https://github.com/adityasharmawork/transia-cli"
             target="_blank"
             rel="noopener noreferrer"
             className="link-underline font-mono text-sm text-[var(--text-tertiary)] transition-colors hover:text-[var(--foreground)]"
@@ -17,7 +17,7 @@ export function Footer() {
           </a>
           <span className="text-[var(--text-muted)]">&middot;</span>
           <a
-            href="https://npmjs.com"
+            href="https://www.npmjs.com/package/transia"
             target="_blank"
             rel="noopener noreferrer"
             className="link-underline font-mono text-sm text-[var(--text-tertiary)] transition-colors hover:text-[var(--foreground)]"

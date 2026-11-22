@@ -26,7 +26,7 @@ const terminalLines = [
   { text: "", instant: true, delay: 50 },
   { text: "  Strings translated: 328", color: "dim" as const, instant: true, delay: 100 },
   { text: "  Target locales:     es, fr, de, ja", color: "dim" as const, instant: true, delay: 100 },
-  { text: "  Provider:           openai", color: "dim" as const, instant: true, delay: 100 },
+  { text: "  Provider:           gemini", color: "dim" as const, instant: true, delay: 100 },
   { text: "  Tokens used:        45,234", color: "dim" as const, instant: true },
 ];
 
@@ -142,7 +142,7 @@ export function Hero() {
             Go Global Now
           </MagneticButton>
           <MagneticButton
-            href="https://github.com"
+            href="https://github.com/adityasharmawork/transia-cli"
             className="rounded-full border border-[var(--border-hover)] px-8 py-3 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--glow)]"
           >
             View on GitHub

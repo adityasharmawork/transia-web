@@ -51,7 +51,7 @@ export function StatsCounter() {
     if (isInView) setStarted(true);
   }, [isInView]);
 
-  const billions = useCountUp(7.8, 2500, started, 1);
+  const billions = useCountUp(6.5, 2500, started, 1);
 
   return (
     <section className="flex min-h-[80vh] items-center justify-center py-24">
@@ -87,7 +87,7 @@ export function StatsCounter() {
           }}
           className="mt-6 text-xl text-[var(--text-secondary)] md:text-2xl"
         >
-          people speak a language other than English.
+          people don&apos;t speak English.
         </motion.p>
 
         {/* Divider */}
